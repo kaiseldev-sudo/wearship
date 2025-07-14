@@ -21,6 +21,7 @@ import Orders from "./pages/Orders";
 import PreOrder from "./pages/PreOrder";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Checkout from "./pages/Checkout";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -57,6 +58,11 @@ const App = () => {
                   <Route path="/orders" element={
                     <ProtectedRoute>
                       <Orders />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/checkout" element={
+                    <ProtectedRoute>
+                      <Checkout />
                     </ProtectedRoute>
                   } />
 
