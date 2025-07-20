@@ -12,14 +12,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
 
-const UserMenu = () => {
+type UserMenuProps = { scrolled?: boolean };
+
+const UserMenu = ({ scrolled }: UserMenuProps) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
 
   if (!user) {
     return (
       <Link to="/login" state={{ from: location.pathname }}>
-        <Button variant="ghost" className="text-navy-700 hover:text-navy-900">
+        <Button
+          variant="ghost"
+          className={
+            scrolled
+              ? "text-navy-700 hover:text-navy-900"
+              : "text-white hover:text-gold-300"
+          }
+        >
           <User size={18} className="mr-2" />
           Sign In
         </Button>
@@ -30,7 +39,14 @@ const UserMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="text-navy-700 hover:text-navy-900">
+        <Button
+          variant="ghost"
+          className={
+            scrolled
+              ? "text-navy-700 hover:text-navy-900"
+              : "text-white hover:text-gold-300"
+          }
+        >
           <User size={18} className="mr-2" />
           Account
         </Button>

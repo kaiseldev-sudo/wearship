@@ -1,37 +1,183 @@
-
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+/* eslint-disable react/no-unknown-property */
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { forwardRef, useRef, useMemo, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
+import { Color, Mesh, ShaderMaterial } from "three";
+import { Button } from "./ui/button";
+import { ArrowRight } from "lucide-react";
 
-const Hero = () => {
+interface Uniforms {
+  uSpeed: { value: number };
+  uScale: { value: number };
+  uNoiseIntensity: { value: number };
+  uColor: { value: Color };
+  uRotation: { value: number };
+  uTime: { value: number };
+}
+
+interface SilkPlaneProps {
+  uniforms: Uniforms;
+}
+
+const hexToNormalizedRGB = (hex: string) => {
+  hex = hex.replace("#", "");
+  return [
+    parseInt(hex.slice(0, 2), 16) / 255,
+    parseInt(hex.slice(2, 4), 16) / 255,
+    parseInt(hex.slice(4, 6), 16) / 255,
+  ];
+};
+
+const vertexShader = `
+varying vec2 vUv;
+varying vec3 vPosition;
+
+void main() {
+  vPosition = position;
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const fragmentShader = `
+varying vec2 vUv;
+varying vec3 vPosition;
+
+uniform float uTime;
+uniform vec3  uColor;
+uniform float uSpeed;
+uniform float uScale;
+uniform float uRotation;
+uniform float uNoiseIntensity;
+
+const float e = 2.71828182845904523536;
+
+float noise(vec2 texCoord) {
+  float G = e;
+  vec2  r = (G * sin(G * texCoord));
+  return fract(r.x * r.y * (1.0 + texCoord.x));
+}
+
+vec2 rotateUvs(vec2 uv, float angle) {
+  float c = cos(angle);
+  float s = sin(angle);
+  mat2  rot = mat2(c, -s, s, c);
+  return rot * uv;
+}
+
+void main() {
+  float rnd        = noise(gl_FragCoord.xy);
+  vec2  uv         = rotateUvs(vUv * uScale, uRotation);
+  vec2  tex        = uv * uScale;
+  float tOffset    = uSpeed * uTime;
+
+  tex.y += 0.03 * sin(8.0 * tex.x - tOffset);
+
+  float pattern = 0.6 +
+                  0.4 * sin(5.0 * (tex.x + tex.y +
+                                   cos(3.0 * tex.x + 5.0 * tex.y) +
+                                   0.02 * tOffset) +
+                           sin(20.0 * (tex.x + tex.y - 0.1 * tOffset)));
+
+  vec4 col = vec4(uColor, 1.0) * vec4(pattern) - rnd / 15.0 * uNoiseIntensity;
+  col.a = 1.0;
+  gl_FragColor = col;
+}
+`;
+
+const SilkPlane = forwardRef<Mesh, SilkPlaneProps>(function SilkPlane({ uniforms }, ref) {
+  const { viewport } = useThree();
+
+  useLayoutEffect(() => {
+    if (ref && typeof ref === 'object' && ref.current) {
+      ref.current.scale.set(viewport.width, viewport.height, 1);
+    }
+  }, [ref, viewport]);
+
+  useFrame((_, delta) => {
+    if (ref && typeof ref === 'object' && ref.current) {
+      (ref.current.material as ShaderMaterial).uniforms.uTime.value += 0.1 * delta;
+    }
+  });
+
   return (
-    <section className="relative min-h-screen flex items-center pt-20">
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-r from-navy-900/80 to-navy-700/60" />
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80')",
-          }}
-        />
-      </div>
+    <mesh ref={ref}>
+      <planeGeometry args={[1, 1, 1, 1]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+      />
+    </mesh>
+  );
+});
+SilkPlane.displayName = "SilkPlane";
 
-      <div className="container mx-auto px-6 relative z-10 py-16 md:py-20 lg:py-24">
-        <div className="max-w-2xl animate-fade-in">
-          <span className="block text-gold-400 font-serif text-lg md:text-xl mb-2">
-            Spread Biblical Truth Through Fashion
-          </span>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-6">
-            Wear Your Worship.
-            <br /> Share His Word.
-          </h1>
-          <p className="text-lg md:text-xl text-cream-100 mb-8 max-w-xl">
-            Unique, Scripture-inspired apparel that speaks to the heart and spreads the Word. Quality
-            shirts that make faith visible.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+interface HeroProps {
+  speed?: number;
+  scale?: number;
+  color?: string;
+  noiseIntensity?: number;
+  rotation?: number;
+}
+
+const Hero: React.FC<HeroProps> = ({
+  speed = 5,
+  scale = 1,
+  color = "#7B7481",
+  noiseIntensity = 1.5,
+  rotation = 0,
+}) => {
+  const meshRef = useRef<Mesh>(null);
+
+  const uniforms = useMemo(
+    () => ({
+      uSpeed: { value: speed },
+      uScale: { value: scale },
+      uNoiseIntensity: { value: noiseIntensity },
+      uColor: { value: new Color(...hexToNormalizedRGB(color)) },
+      uRotation: { value: rotation },
+      uTime: { value: 0 },
+    }),
+    [speed, scale, noiseIntensity, color, rotation]
+  );
+
+  return (
+    <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
+      {/* Silk Canvas Background */}
+      <Canvas dpr={[1, 2]} frameloop="always" style={{ height: '100%', width: '100%' }}>
+        <SilkPlane ref={meshRef} uniforms={uniforms} />
+      </Canvas>
+      {/* Overlay Content */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'left',
+          justifyContent: 'center',
+          zIndex: 2,
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ pointerEvents: 'none', textAlign: 'left' }} className="container mx-auto px-6 relative z-10 py-16 md:py-20 lg:py-24">
+          <div className="max-w-2xl animate-fade-in">
+            <span className="block text-gold-400 font-serif text-lg md:text-xl mb-2">
+              Spread Biblical Truth Through Fashion
+            </span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-6">
+              Wear Your Worship.
+              <br /> Share His Word.
+            </h1>
+            <p className="text-lg md:text-xl text-cream-100 mb-8 max-w-xl">
+              Unique, Scripture-inspired apparel that speaks to the heart and spreads the Word. Quality
+              shirts that make faith visible.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
             <Link to="/shop">
               <Button className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-medium px-8 py-6 text-lg">
                 Shop Collection
@@ -42,9 +188,10 @@ const Hero = () => {
               Our Story
             </Button>
           </div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 

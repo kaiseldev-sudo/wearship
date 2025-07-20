@@ -100,6 +100,7 @@ const Cart = () => {
             </h1>
             <p className="text-navy-600 mt-2">
               {itemCount === 1 ? '1 item' : `${itemCount} items`} in your cart
+
             </p>
           </div>
 

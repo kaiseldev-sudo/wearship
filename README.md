@@ -42,8 +42,9 @@ The frontend is built with:
 The backend includes:
 - Node.js server
 - Express.js
-- SQLite database
+- MySQL database
 - RESTful API endpoints
+- PayPal payment integration
 
 ## Project Structure
 

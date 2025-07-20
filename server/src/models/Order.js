@@ -17,7 +17,7 @@ class Order {
       email,
       billing_address,
       shipping_address,
-      payment_method = 'stripe',
+      payment_method = 'paypal',
       notes = null
     } = orderData;
     
@@ -214,7 +214,24 @@ class Order {
       }
     }
     
-    return await query(sql, params);
+    const orders = await query(sql, params);
+    
+    // Fetch order items for each order
+    for (let order of orders) {
+      order.items = await query(`
+        SELECT 
+          oi.*,
+          p.slug as product_slug,
+          pi.url as product_image
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = TRUE
+        WHERE oi.order_id = ?
+        ORDER BY oi.created_at ASC
+      `, [order.id]);
+    }
+    
+    return orders;
   }
   
   // Update order status

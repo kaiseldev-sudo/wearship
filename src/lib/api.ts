@@ -467,6 +467,54 @@ class ApiService {
     });
   }
 
+  // Order Management API
+  async createOrder(orderData: {
+    cart_id: number;
+    user_id?: number;
+    email: string;
+    billing_address: any;
+    shipping_address: any;
+    payment_method?: string;
+    notes?: string;
+  }): Promise<ApiResponse<any>> {
+    return this.request<any>('/orders/checkout', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+  }
+
+  async completePayPalPayment(orderId: number, paymentData: {
+    paypalOrderDetails: any;
+    paypalOrderId: string;
+  }): Promise<ApiResponse<any>> {
+    return this.request<any>(`/orders/${orderId}/paypal-complete`, {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+  }
+
+  async getUserOrders(userId: number, filters?: {
+    status?: string;
+    payment_status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.payment_status) params.append('payment_status', filters.payment_status);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.offset) params.append('offset', filters.offset.toString());
+    
+    const queryString = params.toString();
+    const endpoint = `/orders?user_id=${userId}${queryString ? `&${queryString}` : ''}`;
+    
+    return this.request<any[]>(endpoint);
+  }
+
+  async getOrderById(orderId: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/orders/${orderId}`);
+  }
+
   // Health check endpoint
   async checkHealth(): Promise<{ status: string; message: string }> {
     try {
@@ -499,6 +547,8 @@ export const queryKeys = {
   productVariants: (productId: number) => ['product', productId, 'variants'],
   cart: (userId?: number | null, sessionId?: string | null) => ['cart', userId, sessionId],
   cartTotals: (userId?: number | null, sessionId?: string | null) => ['cart', 'totals', userId, sessionId],
+  userOrders: (userId: number | null, filters?: any) => ['user-orders', userId, filters],
+  order: (orderId: number | null) => ['order', orderId],
 } as const;
 
 export default apiService; 

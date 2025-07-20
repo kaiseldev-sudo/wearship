@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import UserMenu from "@/components/UserMenu";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,6 +17,8 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { itemCount } = useCart();
+  const { user } = useAuth();
+  const isHome = location.pathname === '/';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -86,7 +89,10 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center">
-          <Link to="/" className="text-2xl md:text-3xl font-serif font-bold text-navy-800">
+          <Link to="/" className={cn(
+            "text-2xl md:text-3xl font-serif font-bold",
+            (isHome && !scrolled) ? "text-white" : "text-navy-800"
+          )}>
             Wearship
           </Link>
         </div>
@@ -96,8 +102,10 @@ const Navbar = () => {
           <Link 
             to="/" 
             className={cn(
-              "text-navy-700 hover:text-navy-900 font-medium transition-colors",
-              isActive('/') && "text-navy-900 font-semibold"
+              (isHome && !scrolled)
+                ? "text-white hover:text-gold-300 font-medium transition-colors"
+                : "text-navy-700 hover:text-navy-900 font-medium transition-colors",
+              isActive('/') && ((isHome && !scrolled) ? "text-gold-300 font-semibold" : "text-navy-900 font-semibold")
             )}
           >
             Home
@@ -105,8 +113,10 @@ const Navbar = () => {
           <Link 
             to="/shop" 
             className={cn(
-              "text-navy-700 hover:text-navy-900 font-medium transition-colors",
-              isActive('/shop') && "text-navy-900 font-semibold"
+              (isHome && !scrolled)
+                ? "text-white hover:text-gold-300 font-medium transition-colors"
+                : "text-navy-700 hover:text-navy-900 font-medium transition-colors",
+              isActive('/shop') && ((isHome && !scrolled) ? "text-gold-300 font-semibold" : "text-navy-900 font-semibold")
             )}
           >
             Shop
@@ -114,8 +124,10 @@ const Navbar = () => {
           <Link 
             to="/pre-order" 
             className={cn(
-              "text-navy-700 hover:text-navy-900 font-medium transition-colors",
-              isActive('/pre-order') && "text-navy-900 font-semibold"
+              (isHome && !scrolled)
+                ? "text-white hover:text-gold-300 font-medium transition-colors"
+                : "text-navy-700 hover:text-navy-900 font-medium transition-colors",
+              isActive('/pre-order') && ((isHome && !scrolled) ? "text-gold-300 font-semibold" : "text-navy-900 font-semibold")
             )}
           >
             Pre-Order
@@ -123,8 +135,10 @@ const Navbar = () => {
           <Link 
             to="/our-story"
             className={cn(
-              "text-navy-700 hover:text-navy-900 font-medium transition-colors",
-              isActive('/our-story') && "text-navy-900 font-semibold"
+              (isHome && !scrolled)
+                ? "text-white hover:text-gold-300 font-medium transition-colors"
+                : "text-navy-700 hover:text-navy-900 font-medium transition-colors",
+              isActive('/our-story') && ((isHome && !scrolled) ? "text-gold-300 font-semibold" : "text-navy-900 font-semibold")
             )}
           >
             Our Story
@@ -132,8 +146,10 @@ const Navbar = () => {
           <Link 
             to="/contact"
             className={cn(
-              "text-navy-700 hover:text-navy-900 font-medium transition-colors",
-              isActive('/contact') && "text-navy-900 font-semibold"
+              (isHome && !scrolled)
+                ? "text-white hover:text-gold-300 font-medium transition-colors"
+                : "text-navy-700 hover:text-navy-900 font-medium transition-colors",
+              isActive('/contact') && ((isHome && !scrolled) ? "text-gold-300 font-semibold" : "text-navy-900 font-semibold")
             )}
           >
             Contact
@@ -166,7 +182,10 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={toggleSearch}
-                  className="ml-2 text-navy-700 hover:text-navy-900 transition-colors"
+                  className={cn(
+                    "ml-2 transition-colors",
+                    (isHome && !scrolled) ? "text-white hover:text-gold-300" : "text-navy-700 hover:text-navy-900"
+                  )}
                 >
                   <X size={16} />
                 </button>
@@ -174,7 +193,10 @@ const Navbar = () => {
             ) : (
               <button 
                 onClick={toggleSearch}
-                className="text-navy-700 hover:text-navy-900 transition-colors"
+                className={cn(
+                  "transition-colors",
+                  (isHome && !scrolled) ? "text-white hover:text-gold-300" : "text-navy-700 hover:text-navy-900"
+                )}
               >
                 <Search size={20} />
               </button>
@@ -184,7 +206,10 @@ const Navbar = () => {
           {/* Cart */}
           <button 
             onClick={handleCartClick}
-            className="text-navy-700 hover:text-navy-900 transition-colors relative"
+            className={cn(
+              "transition-colors relative",
+              (isHome && !scrolled) ? "text-white hover:text-gold-300" : "text-navy-700 hover:text-navy-900"
+            )}
           >
             <ShoppingBag size={20} />
             {itemCount > 0 && (
@@ -194,9 +219,15 @@ const Navbar = () => {
             )}
           </button>
           <div className="hidden md:block">
-            <UserMenu />
+            <UserMenu scrolled={(isHome && !scrolled) ? false : true} />
           </div>
-          <button className="md:hidden text-navy-700" onClick={toggleMenu}>
+          <button
+            className={cn(
+              "md:hidden transition-colors",
+              (isHome && !scrolled) ? "text-white hover:text-gold-300" : "text-navy-700 hover:text-navy-900"
+            )}
+            onClick={toggleMenu}
+          >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -209,6 +240,10 @@ const Navbar = () => {
           isMenuOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
+        {/* Mobile Logo Centered */}
+        <div className="absolute top-6 left-0 w-full flex justify-center items-center pointer-events-none select-none">
+          <span className="text-2xl font-serif font-bold text-navy-800">Wearship</span>
+        </div>
         {/* Mobile Search */}
         <div className="mb-6">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
@@ -231,26 +266,6 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Cart */}
-        <div className="mb-6">
-          <button
-            onClick={() => {
-              handleCartClick();
-              toggleMenu();
-            }}
-            className="flex items-center justify-between w-full p-3 bg-cream-50 rounded-lg border border-cream-200 hover:bg-cream-100 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <ShoppingBag size={20} className="text-navy-700" />
-              <span className="text-navy-800 font-medium">Cart</span>
-            </div>
-            {itemCount > 0 && (
-              <span className="bg-gold-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                {itemCount > 99 ? '99+' : itemCount}
-              </span>
-            )}
-          </button>
-        </div>
-
         <nav className="flex flex-col space-y-6">
           <Link to="/" className="text-navy-800 text-xl font-medium" onClick={toggleMenu}>
             Home
@@ -269,16 +284,34 @@ const Navbar = () => {
           </Link>
         </nav>
         <div className="mt-auto mb-8 space-y-4">
-          <Link to="/login" onClick={toggleMenu} className="block">
-            <Button className="w-full bg-navy-700 hover:bg-navy-800 text-white py-2">
-              Sign In
-            </Button>
-          </Link>
-          <Link to="/register" onClick={toggleMenu} className="block">
-            <Button variant="outline" className="w-full border-navy-700 text-navy-800 py-2">
-              Create Account
-            </Button>
-          </Link>
+          
+          {user ? (
+            <div className="block">
+              <UserMenu scrolled={true} />
+              <Link to="/cart" className="text-navy-800 flex items-center gap-2 relative mb-4" onClick={toggleMenu}>
+                <ShoppingBag size={18} className="text-navy-700 ms-[14px]" />
+                <span className="ms-[8px]">Cart</span>
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 left-6 bg-gold-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+          ) : (
+            <>
+              <Link to="/login" onClick={toggleMenu} className="block">
+                <Button className="w-full bg-navy-700 hover:bg-navy-800 text-white py-2">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/register" onClick={toggleMenu} className="block">
+                <Button variant="outline" className="w-full border-navy-700 text-navy-800 py-2">
+                  Create Account
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

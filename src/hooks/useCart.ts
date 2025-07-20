@@ -222,7 +222,8 @@ export function useCartItemCount(
 ) {
   const { data: cartTotals } = useCartTotals(userId, sessionId);
 
-  return cartTotals?.data?.item_count || 0;
+  // Convert to number to handle string values from backend
+  return Number(cartTotals?.data?.item_count) || 0;
 }
 
 // Helper hook for getting cart summary
@@ -233,12 +234,21 @@ export function useCartSummary(
   const { data: cart, isLoading: cartLoading, error: cartError } = useCart(userId, sessionId);
   const { data: totals, isLoading: totalsLoading, error: totalsError } = useCartTotals(userId, sessionId);
 
+  // Calculate item count and empty state
+  // Convert to number to handle string values from backend
+  const itemCount = Number(totals?.data?.item_count) || 0;
+  const cartItemCount = cart?.data?.items?.length || 0;
+  
+  // Use both totals and cart items to determine if empty
+  // This handles cases where totals might not be available yet
+  const isEmpty = itemCount === 0 && cartItemCount === 0;
+
   return {
     cart: cart?.data,
     totals: totals?.data,
     isLoading: cartLoading || totalsLoading,
     error: cartError || totalsError,
-    itemCount: totals?.data?.item_count || 0,
-    isEmpty: (totals?.data?.item_count || 0) === 0,
+    itemCount,
+    isEmpty,
   };
 } 

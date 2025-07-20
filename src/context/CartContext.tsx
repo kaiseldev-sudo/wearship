@@ -94,7 +94,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user && sessionId && !hasTransferredCart) {
       // Only transfer if there was a guest session and user just logged in
       const hasGuestCart = localStorage.getItem('cart_session_id');
-      if (hasGuestCart && !transferGuestCartMutation.isLoading) {
+      if (hasGuestCart && !transferGuestCartMutation.isPending) {
         setHasTransferredCart(true); // Prevent multiple transfer attempts
         
         transferGuestCartMutation.mutate(
@@ -168,10 +168,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearCart,
     
     // Loading states
-    isAddingToCart: addToCartMutation.isLoading,
-    isUpdatingCart: updateCartItemMutation.isLoading,
-    isRemovingFromCart: removeCartItemMutation.isLoading,
-    isClearingCart: clearCartMutation.isLoading,
+    isAddingToCart: addToCartMutation.isPending,
+    isUpdatingCart: updateCartItemMutation.isPending,
+    isRemovingFromCart: removeCartItemMutation.isPending,
+    isClearingCart: clearCartMutation.isPending,
     
     // Success dialog
     showSuccessDialog,

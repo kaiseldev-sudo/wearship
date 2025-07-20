@@ -35,6 +35,7 @@ const mapProductToCard = (product: Product) => {
     preOrder: product.is_pre_order,
     featured: product.is_featured,
     category: product.category_id?.toString() || "1",
+    inventoryQuantity: product.inventory_quantity || 0,
   };
   return mapped;
 };

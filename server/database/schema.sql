@@ -392,7 +392,7 @@ CREATE TABLE payment_transactions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT UNSIGNED NOT NULL,
     transaction_id VARCHAR(255) NOT NULL, -- External payment processor ID
-    payment_method ENUM('stripe', 'paypal', 'apple_pay', 'google_pay', 'credit_card') NOT NULL,
+    payment_method ENUM('paypal', 'apple_pay', 'google_pay', 'credit_card') NOT NULL,
     payment_type ENUM('payment', 'refund', 'partial_refund') DEFAULT 'payment',
     amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'USD',

@@ -116,7 +116,7 @@ router.post('/checkout', async (req, res) => {
       email,
       billing_address,
       shipping_address,
-      payment_method = 'stripe',
+      payment_method = 'paypal',
       notes
     } = req.body;
 
@@ -319,6 +319,71 @@ router.post('/:id/payments', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to add payment transaction',
+      message: error.message
+    });
+  }
+});
+
+// Complete PayPal payment
+router.post('/:id/paypal-complete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paypalOrderDetails, paypalOrderId } = req.body;
+
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid order ID format'
+      });
+    }
+
+    if (!paypalOrderDetails || !paypalOrderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: paypalOrderDetails, paypalOrderId'
+      });
+    }
+
+    // Extract payment details from PayPal response
+    const paymentDetails = {
+      transaction_id: paypalOrderId,
+      payment_method: 'paypal',
+      payment_type: 'payment',
+      amount: paypalOrderDetails.purchase_units?.[0]?.amount?.value || '0.00',
+      currency: paypalOrderDetails.purchase_units?.[0]?.amount?.currency_code || 'USD',
+      status: 'completed',
+      gateway_response: paypalOrderDetails,
+      processed_at: new Date()
+    };
+
+    // Add payment transaction to database
+    const transactionId = await Order.addPaymentTransaction(parseInt(id), paymentDetails);
+
+    // Update order payment status to paid
+    await Order.updatePaymentStatus(parseInt(id), 'paid');
+
+    // Allocate ministry profits
+    try {
+      const allocations = await Order.allocateMinistryProfits(parseInt(id));
+      console.log('Ministry allocations created:', allocations);
+    } catch (allocationError) {
+      console.error('Error allocating ministry profits:', allocationError);
+    }
+
+    res.json({
+      success: true,
+      message: 'PayPal payment completed successfully',
+      data: {
+        transaction_id: transactionId,
+        order_id: id,
+        paypal_order_id: paypalOrderId
+      }
+    });
+  } catch (error) {
+    console.error('Error completing PayPal payment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete PayPal payment',
       message: error.message
     });
   }

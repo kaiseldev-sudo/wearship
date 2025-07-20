@@ -162,7 +162,7 @@ The mock data includes:
    - Admin dashboard
 
 2. **Payment Integration** - Connect with:
-   - Stripe/PayPal for payments
+   - PayPal for payments
    - Tax calculation services
    - Shipping rate APIs
 

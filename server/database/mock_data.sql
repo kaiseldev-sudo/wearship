@@ -354,9 +354,9 @@ INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant
 -- =====================================
 
 INSERT INTO payment_transactions (order_id, transaction_id, payment_method, amount, currency, status, gateway_response, processed_at) VALUES
-(1, 'pi_1ABC123stripe', 'stripe', 60.09, 'USD', 'completed', '{"id": "pi_1ABC123stripe", "status": "succeeded", "amount": 6009}', '2025-01-15 10:31:00'),
-(2, 'pi_2DEF456stripe', 'stripe', 35.20, 'USD', 'completed', '{"id": "pi_2DEF456stripe", "status": "succeeded", "amount": 3520}', '2025-01-16 14:21:00'),
-(3, 'pi_3GHI789stripe', 'stripe', 83.89, 'USD', 'completed', '{"id": "pi_3GHI789stripe", "status": "succeeded", "amount": 8389}', '2025-01-17 09:16:00');
+(1, 'PAY-1ABC123456789', 'paypal', 60.09, 'USD', 'completed', '{"id": "PAY-1ABC123456789", "status": "COMPLETED", "amount": 60.09}', '2025-01-15 10:31:00'),
+(2, 'PAY-2DEF456789012', 'paypal', 35.20, 'USD', 'completed', '{"id": "PAY-2DEF456789012", "status": "COMPLETED", "amount": 35.20}', '2025-01-16 14:21:00'),
+(3, 'PAY-3GHI789012345', 'paypal', 83.89, 'USD', 'completed', '{"id": "PAY-3GHI789012345", "status": "COMPLETED", "amount": 83.89}', '2025-01-17 09:16:00');
 
 -- =====================================
 -- MINISTRY ALLOCATIONS

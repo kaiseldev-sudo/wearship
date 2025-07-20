@@ -251,7 +251,7 @@ NODE_ENV=production
 DB_HOST=your_production_db_host
 DB_PASSWORD=strong_production_password
 JWT_SECRET=secure_random_jwt_secret
-STRIPE_SECRET_KEY=live_stripe_key
+PAYPAL_CLIENT_ID=your_paypal_client_id_here
 EMAIL_PASSWORD=app_specific_password
 ```
 
