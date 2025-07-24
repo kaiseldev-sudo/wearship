@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const axios = require('axios');
 
 // User registration
 router.post('/register', async (req, res) => {
@@ -15,7 +16,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Email format validation
+    // Email format validation (regex)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
@@ -24,11 +25,54 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Password length validation
-    if (password.length < 6) {
+    // --- Abstract API Email Validation ---
+    const apiKey = 'f5e9397ad9eb4c7dbacc31d58585c60d'; // Use your real API key
+    const validationUrl = `https://emailvalidation.abstractapi.com/v1/?api_key=${apiKey}&email=${encodeURIComponent(email)}`;
+    try {
+      const validationResponse = await axios.get(validationUrl);
+      const data = validationResponse.data;
+
+      // Check for deliverability and format
+      if (!data.is_valid_format.value) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email address format is invalid.'
+        });
+      }
+      if (data.is_disposable_email.value) {
+        return res.status(400).json({
+          success: false,
+          error: 'Disposable email addresses are not allowed.'
+        });
+      }
+      if (data.deliverability !== 'DELIVERABLE') {
+        return res.status(400).json({
+          success: false,
+          error: 'Email address is not deliverable. Please use a valid email.'
+        });
+      }
+    } catch (validationError) {
       return res.status(400).json({
         success: false,
-        error: 'Password must be at least 6 characters long'
+        error: 'Failed to validate email address. Please try again later.'
+      });
+    }
+    // --- End Abstract API Email Validation ---
+
+    // Password length validation
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 8 characters long'
+      });
+    }
+
+    // Password strength validation (min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character.'
       });
     }
 

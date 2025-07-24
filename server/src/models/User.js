@@ -1,5 +1,6 @@
 const { query, transaction } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 
 class User {
   // Find user by email
@@ -90,11 +91,11 @@ class User {
     
     const sql = `
       INSERT INTO users (
-        email, password_hash, first_name, last_name, phone, date_of_birth
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        email, password_hash, first_name, last_name, phone, date_of_birth, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
-    const params = [email, password_hash, first_name, last_name, phone || null, date_of_birth || null];
+    const params = [email, password_hash, first_name, last_name, phone || null, date_of_birth || null, 'inactive'];
     
     try {
       const result = await query(sql, params);
@@ -105,7 +106,7 @@ class User {
         last_name,
         phone,
         date_of_birth,
-        status: 'active'
+        status: ' '
       };
     } catch (error) {
       if (error.code === 'ER_DUP_ENTRY') {

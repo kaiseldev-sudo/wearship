@@ -463,7 +463,7 @@ const Shop = () => {
                   {...product}
                   viewMode={viewMode as "grid" | "list"}
                 />
-              ))}
+              ))} 
             </div>
           ) : (
             <div className="text-center py-12">

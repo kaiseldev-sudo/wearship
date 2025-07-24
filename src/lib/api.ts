@@ -223,18 +223,14 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        
-        // Handle specific error cases
-        if (response.status === 429) {
-          throw new Error(`Rate limit exceeded. Please wait a moment before trying again.`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: await response.text() };
         }
-        
-        if (response.status === 0 || errorText.includes('CORS')) {
-          throw new Error(`CORS error: Cannot connect to backend server at ${this.baseUrl}. Please ensure the server is running and CORS is configured.`);
-        }
-        
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+        errorData.status = response.status;
+        throw errorData;
       }
 
       const data = await response.json();

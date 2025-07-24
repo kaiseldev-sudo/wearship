@@ -161,7 +161,6 @@ const Hero: React.FC<HeroProps> = ({
           alignItems: 'left',
           justifyContent: 'center',
           zIndex: 2,
-          pointerEvents: 'none',
         }}
       >
         <div style={{ pointerEvents: 'none', textAlign: 'left' }} className="container mx-auto px-6 relative z-10 py-16 md:py-20 lg:py-24">
