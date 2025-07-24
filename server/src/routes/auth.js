@@ -3,6 +3,8 @@ const router = express.Router();
 const User = require('../models/User');
 const axios = require('axios');
 
+const apiKey = import.meta.env.VITE_ABSTRACT_API_KEY;
+
 // User registration
 router.post('/register', async (req, res) => {
   try {
@@ -26,7 +28,6 @@ router.post('/register', async (req, res) => {
     }
 
     // --- Abstract API Email Validation ---
-    const apiKey = 'f5e9397ad9eb4c7dbacc31d58585c60d'; // Use your real API key
     const validationUrl = `https://emailvalidation.abstractapi.com/v1/?api_key=${apiKey}&email=${encodeURIComponent(email)}`;
     try {
       const validationResponse = await axios.get(validationUrl);
