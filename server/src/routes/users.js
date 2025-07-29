@@ -187,7 +187,7 @@ router.post('/:id/addresses', async (req, res) => {
     }
 
     // Basic validation
-    const requiredFields = ['type', 'first_name', 'last_name', 'address_line_1', 'city', 'state', 'postal_code'];
+    const requiredFields = ['type', 'first_name', 'last_name', 'address_line_1', 'city', 'province', 'postal_code'];
     for (const field of requiredFields) {
       if (!addressData[field]) {
         return res.status(400).json({

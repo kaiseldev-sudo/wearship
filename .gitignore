@@ -146,5 +146,10 @@ typings/
 .svelte-kit
 
 /server/node_modules
+/server/.env
+/server/.env.local
+/server/.env.development.local
+/server/.env.test.local
+/server/.env.production.local
 
 # End of https://www.gitignore.io/api/node

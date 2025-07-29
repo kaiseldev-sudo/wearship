@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Clock, Package } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
   id: string | number;
@@ -31,6 +33,8 @@ const ProductCard = ({
   inventoryQuantity = 0
 }: ProductCardProps) => {
   const { addToCart, isAddingToCart } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [isHovering, setIsHovering] = useState(false);
 
   // Helper function to safely format price
@@ -53,6 +57,10 @@ const ProductCard = ({
   };
 
   const handleAddToCart = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     // Validate ID exists
     if (id === null || id === undefined || id === '') {
       console.error('Product ID is null, undefined, or empty:', id);
@@ -70,6 +78,40 @@ const ProductCard = ({
       productId: productId,
       quantity: 1,
     }, name);
+  };
+
+  const handleBuyNow = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    // Validate ID exists
+    if (id === null || id === undefined || id === '') {
+      console.error('Product ID is null, undefined, or empty:', id);
+      return;
+    }
+    
+    // Convert id to number if it's a string
+    const productId = typeof id === 'string' ? parseInt(id, 10) : id;
+    
+    if (isNaN(productId) || productId <= 0) {
+      console.error('Invalid product ID after conversion:', productId, 'from original:', id);
+      return;
+    }
+    
+    // Navigate to checkout with product information (no cart addition)
+    navigate('/checkout', {
+      state: {
+        buyNowProduct: {
+          productId: productId,
+          quantity: 1,
+          name: name,
+          price: price,
+          image: image,
+          preOrder: preOrder
+        }
+      }
+    });
   };
 
   const stockStatus = getStockStatus();
@@ -118,14 +160,22 @@ const ProductCard = ({
             )}
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-2">
+            <Button 
+              onClick={handleBuyNow}
+              disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
+              className="bg-gold-600 hover:bg-gold-700 text-white font-medium"
+            >
+              {isAddingToCart ? 'Processing...' : (preOrder ? "Buy Now" : inventoryQuantity === 0 ? "Out of Stock" : "Buy Now")}
+            </Button>
             <Button 
               onClick={handleAddToCart}
               disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
-              className="bg-navy-700 hover:bg-navy-800 text-white flex-1 md:flex-none disabled:bg-gray-400"
+              variant="outline"
+              className="border-navy-600 text-navy-800 hover:bg-navy-50"
             >
               <ShoppingBag className="h-4 w-4 mr-2" />
-              {isAddingToCart ? 'Adding...' : (preOrder ? "Pre-order Now" : inventoryQuantity === 0 ? "Out of Stock" : "Add to Cart")}
+              {isAddingToCart ? 'Adding...' : (preOrder ? "Add to Cart" : inventoryQuantity === 0 ? "Out of Stock" : "Add to Cart")}
             </Button>
           </div>
         </div>
@@ -158,16 +208,7 @@ const ProductCard = ({
             {stockStatus.text}
           </div>
         )}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center opacity-0 transform translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-          <Button 
-            onClick={handleAddToCart}
-            disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
-            className="bg-white text-navy-800 hover:bg-cream-50 font-medium shadow-lg disabled:bg-gray-300 disabled:text-gray-500"
-          >
-            <ShoppingBag className="h-4 w-4 mr-2" />
-            {isAddingToCart ? 'Adding...' : (preOrder ? "Pre-order Now" : inventoryQuantity === 0 ? "Out of Stock" : "Add to Cart")}
-          </Button>
-        </div>
+
       </div>
       <div className="text-center">
         <h3 className="text-navy-800 font-serif font-medium text-lg">{name}</h3>
@@ -177,15 +218,28 @@ const ProductCard = ({
           <p className="text-navy-600 text-sm mt-1">{shortDescription}</p>
         ) : null}
         <p className="text-gold-600 font-medium mt-2">${formatPrice(price)}</p>
-        {stockStatus && (
-          <div className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium mt-2", stockStatus.bgColor, stockStatus.color)}>
-            <Package className="h-3 w-3" />
-            {stockStatus.text}
-          </div>
-        )}
-        {preOrder && (
-          <p className="text-navy-500 text-xs mt-1">Ships in 7 days</p>
-        )}
+        
+        {/* Buttons */}
+        <div className="flex flex-col gap-2 mt-4">
+          <Button 
+            onClick={handleBuyNow}
+            disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
+            size="sm"
+            className="bg-gold-600 hover:bg-gold-700 text-white font-medium"
+          >
+            {isAddingToCart ? 'Processing...' : (preOrder ? "Buy Now" : inventoryQuantity === 0 ? "Out of Stock" : "Buy Now")}
+          </Button>
+          <Button 
+            onClick={handleAddToCart}
+            disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
+            size="sm"
+            variant="outline"
+            className="border-navy-600 text-navy-800 hover:bg-navy-50"
+          >
+            <ShoppingBag className="h-3 w-3 mr-1" />
+            {isAddingToCart ? 'Adding...' : (preOrder ? "Add to Cart" : inventoryQuantity === 0 ? "Out of Stock" : "Add to Cart")}
+          </Button>
+        </div>
       </div>
     </div>
   );

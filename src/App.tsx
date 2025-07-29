@@ -22,6 +22,7 @@ import PreOrder from "./pages/PreOrder";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Checkout from "./pages/Checkout";
+import VerifyEmail from './pages/VerifyEmail';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => {
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/pre-order" element={<PreOrder />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
 
                   {/* Protected routes */}
                   <Route path="/profile" element={

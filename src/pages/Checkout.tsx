@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,8 +11,10 @@ import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogTitle } from '../components/ui/dialog';
 import { toast } from '../components/ui/use-toast';
 import { useUserAddresses } from '../hooks/useUser';
+import { usePhoneValidation } from '../hooks/usePhoneValidation';
+import { AddressSelection } from '../components/AddressSelection';
 import { apiService } from '../lib/api';
-import { AlertTriangle, XCircle } from 'lucide-react';
+import { AlertTriangle, XCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
 
@@ -20,12 +22,53 @@ const Checkout: React.FC = () => {
   const { cart, totals, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Handle buy now product from navigation state
+  const buyNowProduct = location.state?.buyNowProduct;
+  
+  // Create virtual cart data for buy now product
+  const virtualCart = buyNowProduct ? {
+    id: 0, // Virtual cart ID
+    items: [{
+      id: 0,
+      cart_id: 0,
+      productId: buyNowProduct.productId,
+      quantity: buyNowProduct.quantity,
+      unit_price: buyNowProduct.price.toString(),
+      total_price: (buyNowProduct.price * buyNowProduct.quantity).toString(),
+      product_name: buyNowProduct.name,
+      product_slug: '',
+      is_pre_order: buyNowProduct.preOrder,
+      product_image: buyNowProduct.image,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }],
+    subtotal: (buyNowProduct.price * buyNowProduct.quantity).toString(),
+    item_count: 1
+  } : null;
+  
+  // Use virtual cart if buy now product exists, otherwise use regular cart
+  const currentCart = buyNowProduct ? virtualCart : cart;
+  const currentTotals = buyNowProduct ? {
+    item_count: 1,
+    total_quantity: buyNowProduct.quantity,
+    subtotal: (buyNowProduct.price * buyNowProduct.quantity).toString(),
+    tax: ((buyNowProduct.price * buyNowProduct.quantity) * 0.12).toString(), // 12% tax
+    shipping: '0.00', // Free shipping for single item
+    total: ((buyNowProduct.price * buyNowProduct.quantity) * 1.12).toString(),
+    free_shipping_eligible: true,
+    free_shipping_remaining: '0.00'
+  } : totals;
   const [address, setAddress] = useState({
     name: '',
     street: '',
+    region: '',
+    province: '',
     city: '',
     zip: '',
-    country: '',
+    country: 'Philippines',
+    phone: '',
   });
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -33,6 +76,16 @@ const Checkout: React.FC = () => {
   const paypalRef = useRef<HTMLDivElement>(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
+
+  // Phone validation hook
+  const { 
+    validatePhone, 
+    clearValidation, 
+    isValidating, 
+    validationResult, 
+    error: validationError, 
+    isValid 
+  } = usePhoneValidation();
 
   // Fetch user addresses
   const userId = user?.id;
@@ -56,9 +109,33 @@ const Checkout: React.FC = () => {
     }
   }, [defaultAddress]);
 
+  // Debounced phone validation
+  const debouncedPhoneValidation = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (phoneNumber: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          validatePhone(phoneNumber);
+        }, 500);
+      };
+    })(),
+    [validatePhone]
+  );
+
+  // Handle address selection changes
+  const handleAddressSelectionChange = useCallback((region: string, province: string, city: string) => {
+    setAddress(prev => ({
+      ...prev,
+      region,
+      province,
+      city,
+    }));
+  }, []);
+
   // Helper: is address valid?
   const isAddressValid = !!defaultAddress || (
-    address.name && address.street && address.city && address.zip && address.country
+    address.name && address.street && address.city && address.province && address.zip && address.country && address.phone
   );
 
   useEffect(() => {
@@ -79,11 +156,11 @@ const Checkout: React.FC = () => {
             },
             createOrder: (data: any, actions: any) => {
               let value = '0.00';
-              if (totals?.total !== undefined && totals?.total !== null) {
-                if (typeof totals.total === 'string') {
-                  value = totals.total;
-                } else if (typeof totals.total === 'number') {
-                  value = Number(totals.total).toFixed(2);
+              if (currentTotals?.total !== undefined && currentTotals?.total !== null) {
+                if (typeof currentTotals.total === 'string') {
+                  value = currentTotals.total;
+                } else if (typeof currentTotals.total === 'number') {
+                  value = Number(currentTotals.total).toFixed(2);
                 }
               }
               return actions.order.create({
@@ -130,23 +207,23 @@ const Checkout: React.FC = () => {
                       address_line_1: addr.street || '',
                       address_line_2: '',
                       city: addr.city || '',
-                      state: '',
+                      state: addr.province || '',
                       postal_code: addr.zip || '',
-                      country: addr.country || '',
-                      phone: ''
+                      country: addr.country || 'Philippines',
+                      phone: addr.phone || ''
                     };
                   }
                 };
 
                 // Create order in database first
                 const orderResponse = await apiService.createOrder({
-                  cart_id: cart?.id,
+                  cart_id: buyNowProduct ? 0 : cart?.id, // Use 0 for buy now (no cart)
                   user_id: user?.id,
                   email: user?.email || '',
                   billing_address: formatAddress(selectedAddress || address),
                   shipping_address: formatAddress(selectedAddress || address),
                   payment_method: 'paypal',
-                  notes: 'PayPal payment'
+                  notes: buyNowProduct ? 'Buy Now - PayPal payment' : 'PayPal payment'
                 });
 
                 const orderId = orderResponse.data.id;
@@ -197,7 +274,7 @@ const Checkout: React.FC = () => {
       }
     };
     // eslint-disable-next-line
-  }, [isAddressValid, totals?.total, showAddressModal]);
+  }, [isAddressValid, currentTotals?.total, showAddressModal]);
 
   if (!user) {
     return null;
@@ -213,6 +290,28 @@ const Checkout: React.FC = () => {
       toast({ title: 'Please fill in all address fields.' });
       return;
     }
+
+    // Validate phone number if provided
+    if (address.phone && address.phone.trim()) {
+      if (isValidating) {
+        toast({
+          title: "Please wait",
+          description: "Phone number validation in progress. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (validationResult && !isValid) {
+        toast({
+          title: "Invalid Philippines mobile number",
+          description: "Please enter a valid Philippines mobile number (e.g., 09123456789) before proceeding.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -239,11 +338,11 @@ const Checkout: React.FC = () => {
             <Card className="shadow-md">
               <CardContent className="p-6">
                 <h2 className="text-xl font-serif font-semibold mb-6 text-navy-800">Order Summary</h2>
-                {!cart || !cart.items || cart.items.length === 0 ? (
+                {!currentCart || !currentCart.items || currentCart.items.length === 0 ? (
                   <p>Your cart is empty.</p>
                 ) : (
                   <ul className="mb-6 divide-y divide-cream-200">
-                    {cart.items.map((item) => {
+                    {currentCart.items.map((item) => {
                       const price = typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price;
                       const qty = typeof item.quantity === 'string' ? parseInt(item.quantity as any, 10) : item.quantity;
                       return (
@@ -258,19 +357,19 @@ const Checkout: React.FC = () => {
                 <div className="space-y-2 text-navy-700">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>${formatPrice(totals?.subtotal)}</span>
+                    <span>${formatPrice(currentTotals?.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax:</span>
-                    <span>${formatPrice(totals?.tax)}</span>
+                    <span>${formatPrice(currentTotals?.tax)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping:</span>
-                    <span>{totals?.free_shipping_eligible ? <span className="text-green-600 font-medium">FREE</span> : `$${formatPrice(totals?.shipping)}`}</span>
+                    <span>{currentTotals?.free_shipping_eligible ? <span className="text-green-600 font-medium">FREE</span> : `$${formatPrice(currentTotals?.shipping)}`}</span>
                   </div>
                   <div className="flex justify-between font-bold border-t pt-3 mt-3 text-lg">
                     <span>Total:</span>
-                    <span>${formatPrice(totals?.total)}</span>
+                    <span>${formatPrice(currentTotals?.total)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -297,6 +396,11 @@ const Checkout: React.FC = () => {
                       <div>{selectedAddress.address_line_1}{selectedAddress.address_line_2 ? `, ${selectedAddress.address_line_2}` : ''}</div>
                       <div>{selectedAddress.city}, {selectedAddress.state} {selectedAddress.postal_code}</div>
                       <div>{selectedAddress.country}</div>
+                      {selectedAddress.phone && (
+                        <div className="text-blue-600 font-medium">
+                          📞 {selectedAddress.phone}
+                        </div>
+                      )}
                       {selectedAddress.is_default && (
                         <div className="mt-2 text-xs text-navy-500">(Default Shipping Address)</div>
                       )}
@@ -307,23 +411,119 @@ const Checkout: React.FC = () => {
                         <Label htmlFor="name">Full Name</Label>
                         <Input id="name" name="name" value={address.name} onChange={handleInputChange} required />
                       </div>
+                      
+                      {/* Address Selection */}
+                      <AddressSelection 
+                        onSelectionChange={handleAddressSelectionChange}
+                        disabled={false}
+                      />
+
                       <div>
                         <Label htmlFor="street">Street Address</Label>
                         <Input id="street" name="street" value={address.street} onChange={handleInputChange} required />
                       </div>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <Label htmlFor="city">City</Label>
-                          <Input id="city" name="city" value={address.city} onChange={handleInputChange} required />
-                        </div>
-                        <div className="flex-1">
-                          <Label htmlFor="zip">ZIP</Label>
-                          <Input id="zip" name="zip" value={address.zip} onChange={handleInputChange} required />
-                        </div>
+
+                      {/* ZIP Code */}
+                      <div className="space-y-2">
+                        <Label htmlFor="zip">ZIP Code *</Label>
+                        <Input 
+                          id="zip" 
+                          name="zip" 
+                          value={address.zip} 
+                          onChange={handleInputChange}
+                          placeholder="Auto-filled based on city selection"
+                          className={address.zip ? "bg-green-50 border-green-200" : ""}
+                          required 
+                        />
+                        {address.zip && (
+                          <p className="text-xs text-green-600">
+                            ✓ Auto-filled based on city selection
+                          </p>
+                        )}
                       </div>
-                      <div>
-                        <Label htmlFor="country">Country</Label>
-                        <Input id="country" name="country" value={address.country} onChange={handleInputChange} required />
+
+                      {/* Phone Number */}
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Philippines Mobile Number *</Label>
+                        <div className="relative">
+                          <Input 
+                            id="phone" 
+                            name="phone"
+                            type="text"
+                            value={address.phone} 
+                            onChange={(e) => {
+                              const newPhone = e.target.value;
+                              setAddress(prev => ({...prev, phone: newPhone}));
+                              if (newPhone.trim()) {
+                                debouncedPhoneValidation(newPhone);
+                              } else {
+                                clearValidation();
+                              }
+                            }}
+                            placeholder="09123456789"
+                            className={`pr-10 ${
+                              address.phone && !isValidating && validationResult
+                                ? isValid 
+                                  ? 'border-green-500 focus:border-green-500' 
+                                  : 'border-red-500 focus:border-red-500'
+                                : ''
+                            }`}
+                            required
+                          />
+                          {address.phone && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              {isValidating ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              ) : validationResult ? (
+                                isValid ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Validation feedback */}
+                        {address.phone && !isValidating && validationResult && (
+                          <div className={`text-sm ${isValid ? 'text-green-600' : 'text-red-600'}`}>
+                            {isValid ? (
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Valid Philippines mobile number
+                                </div>
+                                {validationResult.format?.local && (
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    Format: {validationResult.format.local}
+                                  </div>
+                                )}
+                                {validationResult.carrier && (
+                                  <div className="text-xs text-gray-600">
+                                    Carrier: {validationResult.carrier}
+                                  </div>
+                                )}
+                                {validationResult.location && (
+                                  <div className="text-xs text-gray-600">
+                                    Location: {validationResult.location}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <XCircle className="h-3 w-3" />
+                                Invalid Philippines mobile number
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {validationError && (
+                          <div className="text-sm text-red-600">
+                            {validationError.message}
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
@@ -392,6 +592,11 @@ const Checkout: React.FC = () => {
                     <div>{addr.address_line_1}{addr.address_line_2 ? `, ${addr.address_line_2}` : ''}</div>
                     <div>{addr.city}, {addr.state} {addr.postal_code}</div>
                     <div>{addr.country}</div>
+                    {addr.phone && (
+                      <div className="text-blue-600 font-medium text-sm">
+                        📞 {addr.phone}
+                      </div>
+                    )}
                     {addr.is_default && <div className="text-xs text-navy-500">(Default)</div>}
                   </div>
                 ))}

@@ -11,12 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 type UserMenuProps = { scrolled?: boolean };
 
 const UserMenu = ({ scrolled }: UserMenuProps) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (!user) {
     return (
@@ -34,6 +36,11 @@ const UserMenu = ({ scrolled }: UserMenuProps) => {
         </Button>
       </Link>
     );
+  }
+
+  const handleSignout = async () => {
+    await signOut();
+    navigate('/');
   }
 
   return (
@@ -63,7 +70,7 @@ const UserMenu = ({ scrolled }: UserMenuProps) => {
           <Link to="/orders" className="w-full cursor-pointer">Orders</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="text-red-600 cursor-pointer">
+        <DropdownMenuItem onClick={handleSignout} className="text-red-600 cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign out</span>
         </DropdownMenuItem>

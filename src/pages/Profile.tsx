@@ -2,6 +2,8 @@
 import React from "react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useUser, useUserAddresses, useUpdateUser, useAddUserAddress, useSetDefaultAddress } from "@/hooks/useUser";
+import { usePhoneValidation } from "@/hooks/usePhoneValidation";
+import { AddressSelection } from "@/components/AddressSelection";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,19 +11,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddAddressRequest } from "@/lib/api";
-import { Star } from "lucide-react";
+import { getPostalCode } from "@/lib/postalCodes";
+import { Star, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 const Profile = () => {
   // Use the improved hook with default options (will redirect to login if not authenticated)
   const { user: authUser } = useRequireAuth();
   const { toast } = useToast();
   
-  // Form stateProduct ID is required
+  // Phone validation hooks
+  const { 
+    validatePhone, 
+    clearValidation, 
+    isValidating, 
+    validationResult, 
+    error: validationError, 
+    isValid 
+  } = usePhoneValidation();
+
+  const { 
+    validatePhone: validateAddressPhone, 
+    clearValidation: clearAddressValidation, 
+    isValidating: isAddressValidating, 
+    validationResult: addressValidationResult, 
+    error: addressValidationError, 
+    isValid: isAddressValid 
+  } = usePhoneValidation();
+  
+  // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -29,12 +51,14 @@ const Profile = () => {
     type: 'both' as const,
     first_name: "",
     last_name: "",
+    phone: "",
     address_line_1: "",
     address_line_2: "",
+    region: "",
+    province: "",
     city: "",
-    state: "",
     postal_code: "",
-    country: "United States",
+    country: "Philippines",
     is_default: true,
   });
 
@@ -53,6 +77,46 @@ const Profile = () => {
 
   const user = userResponse?.data;
   const addresses = addressesResponse?.data || [];
+
+  // Debounced phone validation
+  const debouncedPhoneValidation = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (phoneNumber: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          validatePhone(phoneNumber);
+        }, 500);
+      };
+    })(),
+    [validatePhone]
+  );
+
+  // Debounced address phone validation
+  const debouncedAddressPhoneValidation = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (phoneNumber: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          validateAddressPhone(phoneNumber);
+        }, 500);
+      };
+    })(),
+    [validateAddressPhone]
+  );
+
+  // Handle address selection changes
+  const handleAddressSelectionChange = useCallback((region: string, province: string, city: string) => {
+    const postalCode = getPostalCode(city);
+    setNewAddress(prev => ({
+      ...prev,
+      region,
+      province,
+      city,
+      postal_code: postalCode
+    }));
+  }, []);
 
   // Initialize form with user data
   useEffect(() => {
@@ -74,6 +138,27 @@ const Profile = () => {
     e.preventDefault();
     
     if (!authUser?.id) return;
+    
+    // Validate phone number if provided
+    if (phone && phone.trim()) {
+      if (isValidating) {
+        toast({
+          title: "Please wait",
+          description: "Phone number validation in progress. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (validationResult && !isValid) {
+        toast({
+          title: "Invalid Philippines mobile number",
+          description: "Please enter a valid Philippines mobile number (e.g., 09123456789) before saving.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     
     try {
       await updateUserMutation.mutateAsync({
@@ -105,13 +190,34 @@ const Profile = () => {
     
     // Validation
     if (!newAddress.first_name || !newAddress.last_name || !newAddress.address_line_1 || 
-        !newAddress.city || !newAddress.state || !newAddress.postal_code) {
+        !newAddress.city || !newAddress.province || !newAddress.postal_code) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required address fields.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate phone number if provided
+    if (newAddress.phone && newAddress.phone.trim()) {
+      if (isAddressValidating) {
+        toast({
+          title: "Please wait",
+          description: "Phone number validation in progress. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (addressValidationResult && !isAddressValid) {
+        toast({
+          title: "Invalid Philippines mobile number",
+          description: "Please enter a valid Philippines mobile number (e.g., 09123456789) before saving.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     try {
@@ -121,10 +227,11 @@ const Profile = () => {
         first_name: newAddress.first_name,
         last_name: newAddress.last_name,
         company: newAddress.address_line_2 || undefined,
+        phone: newAddress.phone || undefined,
         address_line_1: newAddress.address_line_1,
         address_line_2: newAddress.address_line_2 || undefined,
         city: newAddress.city,
-        state: newAddress.state,
+        province: newAddress.province,
         postal_code: newAddress.postal_code,
         country: newAddress.country,
       };
@@ -139,12 +246,14 @@ const Profile = () => {
         type: 'both',
         first_name: user?.first_name || "",
         last_name: user?.last_name || "",
+        phone: "",
         address_line_1: "",
         address_line_2: "",
+        region: "",
+        province: "",
         city: "",
-        state: "",
         postal_code: "",
-        country: "United States",
+        country: "Philippines",
         is_default: addresses.length === 0, // First address is default
       });
       
@@ -280,15 +389,70 @@ const Profile = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="phone">Philippines Mobile Number</Label>
+                        <div className="relative">
                         <Input 
                           id="phone" 
-                          type="tel"
+                            type="text"
                           value={phone} 
-                          onChange={(e) => setPhone(e.target.value)}
+                            onChange={(e) => {
+                              const newPhone = e.target.value;
+                              setPhone(newPhone);
+                              if (newPhone.trim()) {
+                                debouncedPhoneValidation(newPhone);
+                              } else {
+                                clearValidation();
+                              }
+                            }}
                           disabled={updateUserMutation.isPending}
-                          placeholder="(555) 123-4567"
-                        />
+                            placeholder="09123456789"
+                            className={`pr-10 ${
+                              phone && !isValidating && validationResult
+                                ? isValid 
+                                  ? 'border-green-500 focus:border-green-500' 
+                                  : 'border-red-500 focus:border-red-500'
+                                : ''
+                            }`}
+                          />
+                          {phone && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              {isValidating ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              ) : validationResult ? (
+                                isValid ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Validation feedback */}
+                        {phone && !isValidating && validationResult && (
+                          <div className={`text-sm ${isValid ? 'text-green-600' : 'text-red-600'}`}>
+                            {isValid ? (
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Valid Philippines mobile number
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <XCircle className="h-3 w-3" />
+                                Invalid Philippines mobile number
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {validationError && (
+                          <div className="text-sm text-red-600">
+                            {validationError.message}
+                          </div>
+                        )}
                       </div>
                       
                       <Button 
@@ -313,8 +477,8 @@ const Profile = () => {
                       <div>
                         <CardTitle>Your Addresses</CardTitle>
                         <CardDescription>
-                      Manage your saved addresses. Click "Set as Default" to change which address is used for billing and shipping.
-                    </CardDescription>
+                          Manage your saved addresses. Click "Set as Default" to change which address is used for billing and shipping.
+                        </CardDescription>
                       </div>
                       {addresses.length > 0 && (
                         <Badge variant="outline" className="self-start">
@@ -375,11 +539,12 @@ const Profile = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground ">
                               <p>{address.address_line_1}</p>
                               {address.address_line_2 && <p>{address.address_line_2}</p>}
                               <p>{address.city}, {address.state} {address.postal_code}</p>
                               <p>{address.country}</p>
+                              <p> {address.phone} </p>
                             </div>
                           </div>
                         ))}
@@ -422,6 +587,98 @@ const Profile = () => {
                       </div>
 
                       <div className="space-y-2">
+                        <Label htmlFor="address-phone">Philippines Mobile Number *</Label>
+                        <div className="relative">
+                          <Input 
+                            id="address-phone" 
+                            type="text"
+                            value={newAddress.phone} 
+                            onChange={(e) => {
+                              const newPhone = e.target.value;
+                              setNewAddress(prev => ({...prev, phone: newPhone}));
+                              if (newPhone.trim()) {
+                                debouncedAddressPhoneValidation(newPhone);
+                              } else {
+                                clearAddressValidation();
+                              }
+                            }}
+                            placeholder="09123456789"
+                            disabled={addAddressMutation.isPending}
+                            className={`pr-10 ${
+                              newAddress.phone && !isAddressValidating && addressValidationResult
+                                ? isAddressValid 
+                                  ? 'border-green-500 focus:border-green-500' 
+                                  : 'border-red-500 focus:border-red-500'
+                                : ''
+                            }`}
+                          />
+                          {newAddress.phone && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              {isAddressValidating ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              ) : addressValidationResult ? (
+                                isAddressValid ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-500" />
+                                )
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Validation feedback */}
+                        {newAddress.phone && !isAddressValidating && addressValidationResult && (
+                          <div className={`text-sm ${isAddressValid ? 'text-green-600' : 'text-red-600'}`}>
+                            {isAddressValid ? (
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Valid Philippines mobile number
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <XCircle className="h-3 w-3" />
+                                Invalid Philippines mobile number
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {addressValidationError && (
+                          <div className="text-sm text-red-600">
+                            {addressValidationError.message}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Address Selection */}
+                      <AddressSelection 
+                        onSelectionChange={handleAddressSelectionChange}
+                        disabled={addAddressMutation.isPending}
+                      />
+
+                      {/* ZIP Code */}
+                      <div className="space-y-2">
+                        <Label htmlFor="postal-code">ZIP Code *</Label>
+                        <Input 
+                          id="postal-code" 
+                          value={newAddress.postal_code} 
+                          onChange={(e) => setNewAddress(prev => ({...prev, postal_code: e.target.value}))}
+                          placeholder="Auto-filled based on city selection"
+                          disabled={addAddressMutation.isPending}
+                          className={newAddress.postal_code ? "bg-green-50 border-green-200" : ""}
+                          required
+                        />
+                        {newAddress.postal_code && (
+                          <p className="text-xs text-green-600">
+                            ✓ Auto-filled based on city selection
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="address-line-1">Street Address *</Label>
                         <Input 
                           id="address-line-1" 
@@ -440,49 +697,6 @@ const Profile = () => {
                           value={newAddress.address_line_2} 
                           onChange={(e) => setNewAddress(prev => ({...prev, address_line_2: e.target.value}))}
                           placeholder="Apt 2B"
-                          disabled={addAddressMutation.isPending}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="city">City *</Label>
-                          <Input 
-                            id="city" 
-                            value={newAddress.city} 
-                            onChange={(e) => setNewAddress(prev => ({...prev, city: e.target.value}))}
-                            disabled={addAddressMutation.isPending}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="state">State *</Label>
-                          <Input 
-                            id="state" 
-                            value={newAddress.state} 
-                            onChange={(e) => setNewAddress(prev => ({...prev, state: e.target.value}))}
-                            disabled={addAddressMutation.isPending}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="postal-code">ZIP Code *</Label>
-                          <Input 
-                            id="postal-code" 
-                            value={newAddress.postal_code} 
-                            onChange={(e) => setNewAddress(prev => ({...prev, postal_code: e.target.value}))}
-                            disabled={addAddressMutation.isPending}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="country">Country</Label>
-                        <Input 
-                          id="country" 
-                          value={newAddress.country} 
-                          onChange={(e) => setNewAddress(prev => ({...prev, country: e.target.value}))}
                           disabled={addAddressMutation.isPending}
                         />
                       </div>

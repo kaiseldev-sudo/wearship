@@ -43,10 +43,11 @@ export interface UserAddress {
   first_name: string;
   last_name: string;
   company?: string;
+  phone?: string;
   address_line_1: string;
   address_line_2?: string;
   city: string;
-  state: string;
+  state: string; // Database field name (maps to province in frontend)
   postal_code: string;
   country: string;
   created_at: string;
@@ -66,10 +67,11 @@ export interface AddAddressRequest {
   first_name: string;
   last_name: string;
   company?: string;
+  phone?: string;
   address_line_1: string;
   address_line_2?: string;
   city: string;
-  state: string;
+  province: string;
   postal_code: string;
   country?: string;
 }
@@ -525,6 +527,37 @@ class ApiService {
         status: 'error', 
         message: `Cannot connect to backend: ${error instanceof Error ? error.message : 'Unknown error'}` 
       };
+    }
+  }
+
+  // Phone Validation API
+  async validatePhone(phoneNumber: string): Promise<{
+    phone: string;
+    valid: boolean;
+    format?: {
+      international: string;
+      local: string;
+    };
+    country?: {
+      code: string;
+      name: string;
+      prefix: string;
+    };
+    location?: string;
+    type?: string;
+    carrier?: string;
+  }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/validate-phone?phone=${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to validate phone number');
+      }
+      
+      return data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to validate phone number');
     }
   }
 }

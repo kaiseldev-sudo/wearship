@@ -1,6 +1,7 @@
 const { query, transaction } = require('../config/database');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const crypto = require('crypto'); // Added for registerWithEmailVerification
 
 class User {
   // Find user by email
@@ -169,6 +170,7 @@ class User {
       UPDATE users 
       SET email_verified_at = CURRENT_TIMESTAMP, 
           email_verification_token = NULL,
+          status = 'active',
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
@@ -245,13 +247,17 @@ class User {
       first_name,
       last_name,
       company,
+      phone,
       address_line_1,
       address_line_2,
       city,
-      state,
+      province,
       postal_code,
-      country = 'United States'
+      country = 'Philippines'
     } = addressData;
+    
+    // Map province to state for database compatibility
+    const state = province;
     
     const queries = [];
     
@@ -276,12 +282,12 @@ class User {
     queries.push({
       sql: `
         INSERT INTO user_addresses (
-          user_id, type, is_default, first_name, last_name, company,
+          user_id, type, is_default, first_name, last_name, company, phone,
           address_line_1, address_line_2, city, state, postal_code, country
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       params: [
-        userId, type, is_default, first_name, last_name, company || null,
+        userId, type, is_default, first_name, last_name, company || null, phone || null,
         address_line_1, address_line_2 || null, city, state, postal_code, country
       ]
     });
@@ -298,9 +304,15 @@ class User {
   // Update user address
   static async updateAddress(userId, addressId, addressData) {
     const allowedFields = [
-      'type', 'is_default', 'first_name', 'last_name', 'company',
+      'type', 'is_default', 'first_name', 'last_name', 'company', 'phone',
       'address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country'
     ];
+    
+    // Map province to state if provided
+    if (addressData.province) {
+      addressData.state = addressData.province;
+      delete addressData.province;
+    }
     
     const fields = [];
     const params = [];
@@ -413,6 +425,98 @@ class User {
       ...orderStats,
       total_addresses: addressCount.total_addresses
     };
+  }
+
+  // Set email verification token
+  static async setEmailVerificationToken(userId, token) {
+    const sql = `
+      UPDATE users SET email_verification_token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `;
+    const result = await query(sql, [token, userId]);
+    return result.affectedRows > 0;
+  }
+
+  // Find user by email verification token
+  static async findByEmailVerificationToken(token) {
+    const sql = `
+      SELECT id, email, first_name, last_name, email_verified_at, status, email_verification_token
+      FROM users WHERE email_verification_token = ? AND deleted_at IS NULL
+    `;
+    const [user] = await query(sql, [token]);
+    return user || null;
+  }
+
+  // Register user with email verification (atomic operation)
+  static async registerWithEmailVerification(userData, sendVerificationEmail) {
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      phone,
+      date_of_birth
+    } = userData;
+    
+    // Hash password
+    const saltRounds = 12;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+    
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    
+    // Prepare all database operations
+    const queries = [
+      {
+        sql: `
+          INSERT INTO users (
+            email, password_hash, first_name, last_name, phone, date_of_birth, 
+            status, email_verification_token
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        params: [
+          email.toLowerCase(), 
+          password_hash, 
+          first_name, 
+          last_name, 
+          phone || null, 
+          date_of_birth || null, 
+          'inactive',
+          verificationToken
+        ]
+      }
+    ];
+    
+    try {
+      // Execute all database operations in a transaction
+      const results = await transaction(queries);
+      const userId = results[0].insertId;
+      
+      // Try to send verification email
+      try {
+        await sendVerificationEmail(email.toLowerCase(), verificationToken);
+      } catch (emailError) {
+        // If email fails, we need to rollback the user creation
+        // Since we can't rollback a committed transaction, we'll soft delete the user
+        await this.delete(userId);
+        throw new Error('Failed to send verification email');
+      }
+      
+      // Return user data without sensitive information
+      return {
+        id: userId,
+        email: email.toLowerCase(),
+        first_name,
+        last_name,
+        phone,
+        date_of_birth,
+        status: 'inactive'
+      };
+    } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        throw new Error('Email already exists');
+      }
+      throw error;
+    }
   }
 }
 

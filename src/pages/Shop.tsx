@@ -120,22 +120,18 @@ const Shop = () => {
       products = products.filter((product) => {
         // Real-time search filter (searches name, description, short description, and tags)
         const searchTerms = searchQuery.toLowerCase().trim();
-        if (!searchTerms) {
-          return true; // Show all products when no search query
-        }
-        
-        const matchesSearch = 
+        const matchesSearch = !searchTerms || 
           product.name.toLowerCase().includes(searchTerms) ||
           (product.shortDescription && product.shortDescription.toLowerCase().includes(searchTerms));
 
-      // Price filter
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-      
-      // Available only filter (exclude pre-order items when enabled)
-      const matchesAvailability = !showAvailableOnly || !product.preOrder;
+        // Price filter
+        const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+        
+        // Available only filter (exclude pre-order items when enabled)
+        const matchesAvailability = !showAvailableOnly || !product.preOrder;
 
-      return matchesSearch && matchesPrice && matchesAvailability;
-    });
+        return matchesSearch && matchesPrice && matchesAvailability;
+      });
 
     // Sort products
     products.sort((a, b) => {

@@ -44,6 +44,7 @@ CREATE TABLE user_addresses (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     company VARCHAR(100),
+    phone VARCHAR(20),
     address_line_1 VARCHAR(255) NOT NULL,
     address_line_2 VARCHAR(255),
     city VARCHAR(100) NOT NULL,

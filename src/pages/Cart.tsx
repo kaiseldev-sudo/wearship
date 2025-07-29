@@ -112,8 +112,6 @@ const Cart = () => {
                 Your cart is empty
               </h2>
               <p className="text-navy-600 mb-8 max-w-md mx-auto">
-                Looks like you haven't added any items to your cart yet. 
-                Browse our collection to find items that inspire your faith.
               </p>
               <Link to="/shop">
                 <Button className="bg-navy-700 hover:bg-navy-800 text-white px-8">
