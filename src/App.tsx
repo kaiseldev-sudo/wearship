@@ -19,6 +19,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import PreOrder from "./pages/PreOrder";
+import Product from "./pages/Product";
+import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Checkout from "./pages/Checkout";
@@ -41,6 +43,7 @@ const App = () => {
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/shop" element={<Shop />} />
+                  <Route path="/product/:id" element={<Product />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/our-story" element={<OurStoryPage />} />
                   <Route path="/contact" element={<Contact />} />
@@ -65,6 +68,11 @@ const App = () => {
                   <Route path="/checkout" element={
                     <ProtectedRoute>
                       <Checkout />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/wishlist" element={
+                    <ProtectedRoute>
+                      <Wishlist />
                     </ProtectedRoute>
                   } />
 

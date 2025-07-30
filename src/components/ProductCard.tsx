@@ -119,9 +119,10 @@ const ProductCard = ({
   if (viewMode === "list") {
     return (
       <div 
-        className={cn("group flex flex-col md:flex-row gap-6 p-6 bg-white rounded-lg border border-cream-200 hover:shadow-lg transition-shadow duration-300", className)}
+        className={cn("group flex flex-col md:flex-row gap-6 p-6 bg-white rounded-lg border border-cream-200 hover:shadow-lg transition-shadow duration-300 cursor-pointer", className)}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
+        onClick={() => navigate(`/product/${id}`)}
       >
         {/* Image */}
         <div className="relative overflow-hidden bg-gray-100 w-full md:w-48 aspect-[3/4] md:aspect-square rounded-lg flex-shrink-0">
@@ -162,14 +163,20 @@ const ProductCard = ({
           
           <div className="flex flex-col gap-2">
             <Button 
-              onClick={handleBuyNow}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBuyNow();
+              }}
               disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
               className="bg-gold-600 hover:bg-gold-700 text-white font-medium"
             >
               {isAddingToCart ? 'Processing...' : (preOrder ? "Buy Now" : inventoryQuantity === 0 ? "Out of Stock" : "Buy Now")}
             </Button>
             <Button 
-              onClick={handleAddToCart}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddToCart();
+              }}
               disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
               variant="outline"
               className="border-navy-600 text-navy-800 hover:bg-navy-50"
@@ -185,9 +192,10 @@ const ProductCard = ({
 
   return (
     <div 
-      className={cn("group overflow-hidden", className)}
+      className={cn("group overflow-hidden cursor-pointer", className)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      onClick={() => navigate(`/product/${id}`)}
     >
       <div className="relative overflow-hidden bg-gray-100 aspect-[3/4] mb-4 rounded-lg">
         <img
@@ -222,7 +230,10 @@ const ProductCard = ({
         {/* Buttons */}
         <div className="flex flex-col gap-2 mt-4">
           <Button 
-            onClick={handleBuyNow}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBuyNow();
+            }}
             disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
             size="sm"
             className="bg-gold-600 hover:bg-gold-700 text-white font-medium"
@@ -230,7 +241,10 @@ const ProductCard = ({
             {isAddingToCart ? 'Processing...' : (preOrder ? "Buy Now" : inventoryQuantity === 0 ? "Out of Stock" : "Buy Now")}
           </Button>
           <Button 
-            onClick={handleAddToCart}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddToCart();
+            }}
             disabled={isAddingToCart || (!preOrder && inventoryQuantity === 0)}
             size="sm"
             variant="outline"

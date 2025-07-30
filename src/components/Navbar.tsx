@@ -154,6 +154,19 @@ const Navbar = () => {
           >
             Contact
           </Link>
+          {user && (
+            <Link 
+              to="/wishlist"
+              className={cn(
+                (isHome && !scrolled)
+                  ? "text-white hover:text-gold-300 font-medium transition-colors"
+                  : "text-navy-700 hover:text-navy-900 font-medium transition-colors",
+                isActive('/wishlist') && ((isHome && !scrolled) ? "text-gold-300 font-semibold" : "text-navy-900 font-semibold")
+              )}
+            >
+              Wishlist
+            </Link>
+          )}
         </nav>
 
         {/* Actions */}
@@ -282,6 +295,11 @@ const Navbar = () => {
           <Link to="/contact" className="text-navy-800 text-xl font-medium" onClick={toggleMenu}>
             Contact
           </Link>
+          {user && (
+            <Link to="/wishlist" className="text-navy-800 text-xl font-medium" onClick={toggleMenu}>
+              Wishlist
+            </Link>
+          )}
         </nav>
         <div className="mt-auto mb-8 space-y-4">
           

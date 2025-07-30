@@ -154,6 +154,7 @@ export interface Product {
   base_price: number | string; // API might return string
   compare_at_price?: number | string;
   cost_price?: number | string;
+  weight?: string;
   category_id: number;
   category_name?: string;
   category_slug?: string;
@@ -166,6 +167,21 @@ export interface Product {
   estimated_shipping_date?: string;
   inventory_quantity: number;
   primary_image_url?: string;
+  thumbnails?: string[];
+  images?: Array<{ url: string; position?: number; is_primary?: boolean }>;
+  variants?: Array<{
+    id: number;
+    product_id: number;
+    title: string;
+    price?: number | string;
+    inventory_quantity: number;
+    option_details?: string;
+  }>;
+  options?: Array<{
+    id: number;
+    name: string;
+    values: Array<{ id: number; value: string; position: number }>;
+  }>;
   created_at: string;
   updated_at: string;
 }
@@ -400,6 +416,94 @@ class ApiService {
     });
   }
 
+  // Wishlist methods
+  async getUserWishlist(userId: number): Promise<ApiResponse<WishlistItem[]>> {
+    return this.request<WishlistItem[]>(`/wishlist/${userId}`);
+  }
+
+  async addToWishlist(userId: number, productId: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/wishlist/${userId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({ productId }),
+    });
+  }
+
+  async removeFromWishlist(userId: number, productId: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/wishlist/${userId}/items/${productId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async checkWishlistStatus(userId: number, productId: number): Promise<ApiResponse<WishlistStatus>> {
+    return this.request<WishlistStatus>(`/wishlist/${userId}/items/${productId}`);
+  }
+
+  async clearWishlist(userId: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/wishlist/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Reviews API
+  async getProductReviews(productId: number, page = 1, limit = 10): Promise<ApiResponse<any>> {
+    return this.request(`/reviews/product/${productId}?page=${page}&limit=${limit}`);
+  }
+
+  async getUserReview(productId: number, userId: number): Promise<ApiResponse<any>> {
+    return this.request(`/reviews/user/${productId}`, {
+      headers: this.getCartHeaders(userId),
+    });
+  }
+
+  async createReview(reviewData: {
+    product_id: number;
+    rating: number;
+    title: string;
+    comment: string;
+  }, userId: number): Promise<ApiResponse<any>> {
+    return this.request('/reviews', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getCartHeaders(userId),
+      },
+      body: JSON.stringify(reviewData),
+    });
+  }
+
+  async updateReview(reviewId: number, reviewData: {
+    product_id: number;
+    rating: number;
+    title: string;
+    comment: string;
+  }, userId: number): Promise<ApiResponse<any>> {
+    return this.request(`/reviews/${reviewId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getCartHeaders(userId),
+      },
+      body: JSON.stringify(reviewData),
+    });
+  }
+
+  async deleteReview(reviewId: number, productId: number, userId: number): Promise<ApiResponse<any>> {
+    return this.request(`/reviews/${reviewId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getCartHeaders(userId),
+      },
+      body: JSON.stringify({ product_id: productId }),
+    });
+  }
+
+  async markReviewHelpful(reviewId: number): Promise<ApiResponse<any>> {
+    return this.request(`/reviews/${reviewId}/helpful`, {
+      method: 'POST',
+    });
+  }
+
   // Authentication API
   async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
     return this.request<AuthResponse>('/auth/login', {
@@ -562,6 +666,24 @@ class ApiService {
   }
 }
 
+// Wishlist interfaces
+export interface WishlistItem {
+  id: number;
+  user_id: number;
+  product_id: number;
+  created_at: string;
+  product_name: string;
+  product_slug: string;
+  base_price: string | number;
+  primary_image_url?: string;
+  is_pre_order: boolean;
+  inventory_quantity: number;
+}
+
+export interface WishlistStatus {
+  isInWishlist: boolean;
+}
+
 // Create singleton instance
 export const apiService = new ApiService();
 
@@ -578,6 +700,8 @@ export const queryKeys = {
   cartTotals: (userId?: number | null, sessionId?: string | null) => ['cart', 'totals', userId, sessionId],
   userOrders: (userId: number | null, filters?: any) => ['user-orders', userId, filters],
   order: (orderId: number | null) => ['order', orderId],
+  wishlist: (userId: number) => ['wishlist', userId],
+  wishlistStatus: (userId: number, productId: number) => ['wishlist', 'status', userId, productId],
 } as const;
 
 export default apiService; 

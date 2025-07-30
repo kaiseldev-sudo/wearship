@@ -72,6 +72,18 @@ class Product {
     const [product] = await query(productSql, [id]);
     if (!product) return null;
     
+    // Parse thumbnails JSON if it exists
+    if (product.thumbnails) {
+      try {
+        product.thumbnails = JSON.parse(product.thumbnails);
+      } catch (error) {
+        console.error('Error parsing thumbnails JSON:', error);
+        product.thumbnails = [];
+      }
+    } else {
+      product.thumbnails = [];
+    }
+    
     // Get product variants
     product.variants = await this.getProductVariants(id);
     
@@ -98,6 +110,18 @@ class Product {
     
     const [product] = await query(productSql, [slug]);
     if (!product) return null;
+    
+    // Parse thumbnails JSON if it exists
+    if (product.thumbnails) {
+      try {
+        product.thumbnails = JSON.parse(product.thumbnails);
+      } catch (error) {
+        console.error('Error parsing thumbnails JSON:', error);
+        product.thumbnails = [];
+      }
+    } else {
+      product.thumbnails = [];
+    }
     
     // Get additional details
     product.variants = await this.getProductVariants(product.id);
@@ -164,6 +188,29 @@ class Product {
     }
     
     return options;
+  }
+
+  // Update product thumbnails
+  static async updateThumbnails(productId) {
+    const thumbnailsSql = `
+      SELECT url 
+      FROM product_images 
+      WHERE product_id = ? AND is_primary = FALSE
+      ORDER BY position ASC
+    `;
+    
+    const thumbnails = await query(thumbnailsSql, [productId]);
+    const thumbnailUrls = thumbnails.map(img => img.url);
+    
+    const updateSql = `
+      UPDATE products 
+      SET thumbnails = ? 
+      WHERE id = ?
+    `;
+    
+    await query(updateSql, [JSON.stringify(thumbnailUrls), productId]);
+    
+    return thumbnailUrls;
   }
   
   // Create new product

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, LogOut, ShoppingBag } from 'lucide-react';
+import { User, LogOut, ShoppingBag, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -54,8 +54,8 @@ const UserMenu = ({ scrolled }: UserMenuProps) => {
               : "text-white hover:text-gold-300"
           }
         >
-          <User size={18} className="mr-2" />
-          Account
+          <User size={18}/>
+          {user.first_name}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -68,6 +68,12 @@ const UserMenu = ({ scrolled }: UserMenuProps) => {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/orders" className="w-full cursor-pointer">Orders</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/wishlist" className="w-full cursor-pointer">
+            <Heart className="mr-2 h-4 w-4" />
+            <span>Wishlist</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignout} className="text-red-600 cursor-pointer">
