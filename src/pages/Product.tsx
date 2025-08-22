@@ -497,6 +497,8 @@ const Product = () => {
                 </div>
               </div>
 
+              {/* I am goint to delete this later on */}
+
               {/* Tags */}
               {product.tags && (
                 <div className="bg-cream-50 rounded-lg p-6">
