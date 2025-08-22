@@ -192,7 +192,7 @@ const ProductCard = ({
 
   return (
     <div 
-      className={cn("group overflow-hidden cursor-pointer", className)}
+      className={cn("group overflow-hidden cursor-pointer flex flex-col h-full", className)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onClick={() => navigate(`/product/${id}`)}
@@ -218,7 +218,7 @@ const ProductCard = ({
         )}
 
       </div>
-      <div className="text-center">
+      <div className="text-center flex flex-col flex-1">
         <h3 className="text-navy-800 font-serif font-medium text-lg">{name}</h3>
         {verse ? (
           <p className="text-navy-600 text-sm mt-1 italic">"{verse}"</p>
@@ -228,7 +228,7 @@ const ProductCard = ({
         <p className="text-gold-600 font-medium mt-2">${formatPrice(price)}</p>
         
         {/* Buttons */}
-        <div className="flex flex-col gap-2 mt-4">
+        <div className="flex flex-col gap-2 mt-4 mt-auto">
           <Button 
             onClick={(e) => {
               e.stopPropagation();
